@@ -11,8 +11,7 @@ class Logger:
 
         Args:
             file_name(str): _description_
-            basic_level(_type_, optional): _description_.
-            Defaults to logging.INFO.
+            basic_level(_type_, optional): _description_. Defaults to logging.INFO.
         """
         # Gets or creates a logger
         logger = logging.getLogger(__name__)
@@ -24,8 +23,7 @@ class Logger:
 
         file_handler = logging.FileHandler(f"../logs/{file_name}")
         formatter = logging.Formatter(
-            """%(asctime)s : %(levelname)s : %(name)s :
-            %(message)s", "%m-%d-%Y %H:%M:%S"""
+            "%(asctime)s : %(levelname)s : %(name)s : %(message)s", "%m-%d-%Y %H:%M:%S"
         )
 
         file_handler.setFormatter(formatter)
