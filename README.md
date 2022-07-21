@@ -1,4 +1,4 @@
-#Scalable DataWarehouse
+# Scalable DataWarehouse
 
 <!-- Table of contents -->
 - [About](#about)
