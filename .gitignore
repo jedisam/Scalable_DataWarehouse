@@ -1,1 +1,9 @@
 airflow/logs
+.env
+dags/__pycache__
+logs
+airflow
+plugins
+docker-compose3.yml
+docker-compose4.yml
+docker-compose5.yml

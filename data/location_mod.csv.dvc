@@ -1,0 +1,4 @@
+outs:
+- md5: 7c3a90c28a8a876fae644531c0ea7a24
+  size: 75391
+  path: location_mod.csv
