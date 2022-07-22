@@ -1,73 +1,111 @@
-version: '3'
+version: "3"
+x-airflow-common: &airflow-common
+  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.1.0}
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+    AIRFLOW__CORE__FERNET_KEY: ""
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__CORE__LOAD_EXAMPLES: "true"
+    AIRFLOW__API__AUTH_BACKEND: "airflow.api.auth.backend.basic_auth"
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+  user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-50000}"
+  depends_on:
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+
 services:
-  postgres-airflow:
-    image: postgres
+  postgres:
+    image: postgres:13
     environment:
-      POSTGRES_PASSWORD: pssd
-      POSTGRES_USER : airflowuser
-      POSTGRES_DB : airflowdb
-      
-      AIRFLOW_SCHEMA: airflow
-    expose:
-      - 5432
-    restart: always
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
     volumes:
-      - ./scripts_postgres:/docker-entrypoint-initdb.d
-      # - ./sample_data:/sample_data
-
-  postgres-dbt:
-    image: postgres
-    environment:
-      POSTGRES_PASSWORD: pssd
-      POSTGRES_USER : dbtuser
-      POSTGRES_DB : dbtdb
-      DBT_SCHEMA: dbt
-      DBT_RAW_DATA_SCHEMA: dbt_raw_data
-    expose:
-      - 5432
+      - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
     restart: always
-    volumes:
-      - ./sample_data:/sample_data
 
-  airflow:
-    build: .
-    restart: always
-    environment: 
-      DBT_PROFILES_DIR: /dbt
-      AIRFLOW_HOME: /airflow
-      AIRFLOW__CORE__DAGS_FOLDER: /airflow/dags
-      AIRFLOW__CORE__PARALLELISM: 4
-      AIRFLOW__CORE__DAG_CONCURRENCY: 4
-      AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: 4
-      # AIRFLOW__ADMIN__HIDE_SENSITIVE_VARIABLE_FIELDS: False
-      # Postgres details need to match with the values defined in the postgres-airflow service
-      POSTGRES_USER: airflowuser
-      POSTGRES_PASSWORD: pssd
-      POSTGRES_HOST: postgres-airflow
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: airflowdb
-      # postgres-dbt connection details. Required for the inital loading of seed data
-      # Credentials need to match with service postgres-dbt
-      DBT_POSTGRES_PASSWORD: pssd
-      DBT_POSTGRES_USER : dbtuser
-      DBT_POSTGRES_DB : dbtdb
-      DBT_DBT_SCHEMA: dbt
-      DBT_DBT_RAW_DATA_SCHEMA: dbt_raw_data
-      DBT_POSTGRES_HOST: postgres-dbt
-    depends_on:
-      - postgres-airflow
-      - postgres-dbt
+  redis:
+    image: redis:latest
     ports:
-      - 8000:8080
-    volumes:
-      - ./dbt:/dbt
-      - ./airflow:/airflow
-
-  adminer:
-    image: adminer
+      - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 30s
+      retries: 50
     restart: always
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
     ports:
       - 8080:8080
-    depends_on:
-      - postgres-airflow
-      - postgres-dbt
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"',
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  airflow-worker:
+    <<: *airflow-common
+    command: celery worker
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  airflow-init:
+    <<: *airflow-common
+    command: version
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_UPGRADE: "true"
+      _AIRFLOW_WWW_USER_CREATE: "true"
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+
+  flower:
+    <<: *airflow-common
+    command: celery flower
+    ports:
+      - 5555:5555
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5555/"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+volumes:
+  postgres-db-volume:
