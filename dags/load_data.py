@@ -35,4 +35,11 @@ create_table = PostgresOperator(
     dag=dag_exec_scripts,
 )
 
-create_table
+load_data = PostgresOperator(
+    sql="sql/load_data.sql",
+    task_id="load_data_task",
+    postgres_conn_id="postgres_dwh",
+    dag=dag_exec_scripts,
+)
+
+create_table >> load_data
