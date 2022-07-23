@@ -2,17 +2,17 @@ scalable_dwh:
   outputs:
     dev:
       type: postgres
-      threads: 4
-      host: "{{ env_var('DB_HOST') }}"
-      port: "{{ env_var('DB_PORT') | int }}"
-      user: "{{ env_var('DB_USER') }}"
-      pass: "{{ env_var('DB_PASSWORD') }}"
-      dbname: "{{ env_var('DB_NAME') }}"
+      threads: 8
+      host: "{{ env_var('DB_HOST_DEV') }}"
+      port: "{{ env_var('DB_PORT_DEV') | int }}"
+      user: "{{ env_var('DB_USER_DEV') }}"
+      pass: "{{ env_var('DB_PASSWORD_DEV') }}"
+      dbname: "{{ env_var('DB_NAME_DEV') }}"
       schema: public
 
     prod:
       type: postgres
-      threads: 4
+      threads: 8
       host: "{{ env_var('DB_HOST') }}"
       port: "{{ env_var('DB_PORT') | int }}"
       user: "{{ env_var('DB_USER') }}"
