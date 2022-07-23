@@ -24,6 +24,37 @@ x-airflow-common:
       condition: service_healthy
 
 services:
+  dbt-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: [ "dbt-rpc", "serve" ]
+    env_file: .env
+    environment:
+      - DBT_ENABLE_LEGACY_LOGGER=True
+    ports:
+      - '8581:8580'
+    
+    depends_on:
+      - postgres
+
+    volumes:
+      - ./scalable_dwh_dbt:/app
+
+
+  dbt-console:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: [ "/bin/bash" ]
+    env_file: .env
+    stdin_open: true
+    tty: true
+    depends_on:
+      - postgres
+    volumes:
+      - ./scalable_dwh_dbt:/app
+
   postgres:
     image: postgres:13
     environment:
