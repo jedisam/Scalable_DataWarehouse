@@ -7,3 +7,5 @@ plugins
 docker-compose3.yml
 docker-compose4.yml
 docker-compose5.yml
+
+airflow.cfg
