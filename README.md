@@ -80,8 +80,8 @@ SMTP_USER=<your_smtp_user>
 SMTP_PASSWORD=<your_smtp_password>
 
   ```
-2. Run `docker-compose up airflow-init` to start the project.
-3. Run `docker-compose up -d` to start the project and visit localhost:8080 in your browser.
+2. Run `docker-compose up airflow-init` to initialize airflow user.
+3. Run `docker-compose up -d` to start the project and visit localhost:8080 in your browser to access airflow admin.
 4. Run `docker exec <dbt-cli-id> /bin/bash` to execute dbt commands.
 5. Run `docker-compose down` to stop the project.
 
